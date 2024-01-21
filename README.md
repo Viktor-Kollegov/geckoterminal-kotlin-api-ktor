@@ -12,6 +12,17 @@ This library provides a convenient interface for interacting with the GeckoTermi
 
 ## Usage
 
+```
+repositories {
+    ...
+    maven { url = uri("https://jitpack.io") }
+}
+dependencies {    
+    ...
+    implementation("com.github.Viktor-Kollegov:geckoterminal-kotlin-api-ktor:<current-release-tag>")
+}
+```
+
 To use this library, you need to create an instance of `GeckoTerminalApiSync` or `GeckoTerminalApiAsync` and call the methods you need.
 
 Example:
