@@ -139,32 +139,37 @@ class GeckoTerminalApiSync(
     }
 
     private inline fun <reified T> getResponse(url: String): T {
-        with(client(URL(url))) {
-            requestMethod = "GET"
-            setRequestProperty(headerName, headerValue)
-            val responseText = inputStream.bufferedReader().use { it.readText() }
-            return try {
-                json.decodeFromString<T>(responseText)
-            } catch (e: Exception) {
-                if (e is kotlinx.serialization.SerializationException && e.message?.contains("errors") == true) {
-                    val errorResponse = json.decodeFromString<ErrorsResponse>(responseText)
-                    val error = errorResponse.errors.first()
-                    throw when (error.status) {
-                        "404" -> when (error.title) {
-                            "Specified pool not found" -> GeckoTerminalApiException.PoolNotFoundException(error.title)
-                            "Specified network not found" -> GeckoTerminalApiException.NetworkNotFoundException(error.title)
-                            "Token for specified address not found" -> GeckoTerminalApiException.TokenNotFoundException(error.title)
-                            "Specified dex not found" -> GeckoTerminalApiException.DexNotFoundException(error.title)
-                            else -> Exception("Unknown error: ${error.title}")
+        val connection = client(URL(url))
+        return try {
+            with(connection) {
+                requestMethod = "GET"
+                setRequestProperty(headerName, headerValue)
+                val responseText = inputStream.bufferedReader().use { it.readText() }
+                try {
+                    json.decodeFromString<T>(responseText)
+                } catch (e: Exception) {
+                    if (e is kotlinx.serialization.SerializationException && e.message?.contains("errors") == true) {
+                        val errorResponse = json.decodeFromString<ErrorsResponse>(responseText)
+                        val error = errorResponse.errors.first()
+                        throw when (error.status) {
+                            "404" -> when (error.title) {
+                                "Specified pool not found" -> GeckoTerminalApiException.PoolNotFoundException(error.title)
+                                "Specified network not found" -> GeckoTerminalApiException.NetworkNotFoundException(error.title)
+                                "Token for specified address not found" -> GeckoTerminalApiException.TokenNotFoundException(error.title)
+                                "Specified dex not found" -> GeckoTerminalApiException.DexNotFoundException(error.title)
+                                else -> Exception("Unknown error: ${error.title}")
+                            }
+                            "422" -> GeckoTerminalApiException.UnsupportedEndpointException(error.title)
+                            "400" -> GeckoTerminalApiException.ExceededMaxAddressesException(error.title)
+                            else -> Exception("Unknown error status: ${error.status}")
                         }
-                        "422" -> GeckoTerminalApiException.UnsupportedEndpointException(error.title)
-                        "400" -> GeckoTerminalApiException.ExceededMaxAddressesException(error.title)
-                        else -> Exception("Unknown error status: ${error.status}")
+                    } else {
+                        throw e
                     }
-                } else {
-                    throw e
                 }
             }
+        } finally {
+            connection.disconnect()
         }
     }
 
